@@ -58,4 +58,4 @@ println(final_df)
 CSV.write("/home/prabu/dfcom3.csv", final_df)
 
 
-plot(final_df.dateTime, final_df.AS7262_temperature)
+#plot(final_df.dateTime, final_df.AS7262_temperature)
