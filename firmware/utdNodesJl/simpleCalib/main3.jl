@@ -12,8 +12,6 @@ yamlFile = YAML.load_file("../mintsDefinitionsV2.yaml"; dicttype=OrderedDict{Str
 dirctory = yamlFile["dataFolder"]                            # taking the directory of data stored
 sensorNames = yamlFile["liveStack"]                         # all the sensor names
 #sensorNames = ["AS7262","BME280","GPSGPGGA2","GPSGPRMC2","MGS001"]
-#sensorNames = ["GPSGPRMC2"]
-#sensorNames = ["BME280"]
 
 # only 11th node data is saved
 nodeIDs_array = yamlFile["nodeIDs"]                         # node's IDs array
@@ -21,8 +19,6 @@ node11 = nodeIDs_array[11]                                  # Taking 11th node
 nodeId = node11["nodeID"]                                   # taking 11th nodeID
 
 path = dirctory*"/"*nodeId
-
-
 
 
 ############# anaylzing and averaging data
@@ -35,8 +31,6 @@ function ss(dd, mm, yy, sensr)
         df = CSV.read(path*"/"*yy*"/"*mm*"/"*dd*"/"*CSV_file, DataFrame)        # If the CSV file exist then take the data into a dataframe
         df.dateTime =  SubString.(string.(df.dateTime), 1, 19)                  # Removing last three decimal numbers in dateTime column
         df.dateTime = DateTime.(df.dateTime,"yyyy-mm-dd HH:MM:SS")              # Converting to dataTime format
-
-
 
         if sensr == "GPSGPGGA2"
             df = select!(df, Not(:timestamp))
@@ -57,22 +51,12 @@ function ss(dd, mm, yy, sensr)
             df = select!(df, Not(:magVariation))
             df = select!(df, Not(:magVariationDirection))
             df = select!(df, Not(:trueCourse))
-
         end
     
-
-
-
-
-
-        
 
         df.dateTime = map((x) -> round(x, Dates.Second(30)), df.dateTime)       # Rounding dateTime for 30 seconds 
         gdf = groupby(df, :dateTime)                                            # making groups by same dateTime
         cgdf = combine(gdf, valuecols(gdf) .=> mean)                            # Calculate the mean of each group and then combine the groups 
-        
-        
-
         
 
         colFullName = names(cgdf)                                               # Take the column names of dataFrame into a array
@@ -82,10 +66,7 @@ function ss(dd, mm, yy, sensr)
             rename!(cgdf,colFullName[x] => sensr*"_"*colName)                   # adding sensor name to the column name
         end
         
-
-        
-        #return cgdf                             # return the dataFrame to for loop
-        return cgdf
+        return cgdf                             # return the dataFrame to for loop
 
     end
 
@@ -148,29 +129,4 @@ end
 
 
 final_df2 = sort!(final_df)  
-CSV.write("/home/prabu/dfcomfff4.csv", final_df2)
-
-
-
-
-
-
-
-
-#=
-
-df = CSV.read("/home/prabu/Research/mintsData/001e06305a6c/2019/07/22/MINTS_001e06305a6c_GPSGPGGA2_2019_07_22.csv", DataFrame)
-
-
-df = select!(df, Not(:latitudeDirection))
-df = select!(df, Not(:longitudeDirection))
-df = select!(df, Not(:altitudeUnits))
-df = select!(df, Not(:undulationUnits))
-
-
-
-
-
-println(df)
-
-=#
+CSV.write("/home/prabu/"*nodeId*"df.csv", final_df2)
