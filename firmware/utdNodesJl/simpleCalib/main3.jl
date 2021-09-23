@@ -1,11 +1,19 @@
+# import Pkg; 
+# Pkg.add("JLD")
+# Pkg.add("PlotlyJS")
+# Pkg.add("JSON")
+# Pkg.add("JuMP")
+
 import YAML
 
+using JLD
 using OrderedCollections
 using CSV
 using DataFrames 
 using Dates
 using Query
 using Statistics
+using JuMP
 
 
 yamlFile = YAML.load_file("../mintsDefinitionsV2.yaml"; dicttype=OrderedDict{String,Any})      # loading yaml file and arrange in order
@@ -73,9 +81,7 @@ function ss(dd, mm, yy, sensr)
 end
 
 
-
-
-
+#global sensr_exsist = false
 n = 0
 
 for sensr in sensorNames                                                # Go through all the sensor names
@@ -96,18 +102,23 @@ for sensr in sensorNames                                                # Go thr
 
                 if (CSV_file in filess)
                     println("Date: "*y*"_"*m*"_"*d)
+                    println(sensr)
                     averaged_df = ss(d, m, y, sensr)
                     df2 = averaged_df
                     k = k + 1
+
+                    global sensr_exsist = true
                     
                     if (k > 1)
                         global new_df = outerjoin(new_df, df2, on = intersect(names(new_df), names(df2)))
                     else
                         new_df = averaged_df
                     end
+
                 else
                     println("No data of "*sensr)
-                    continue
+                    sensr_exsist = false
+                    #continue
                 end
                 
             end
@@ -116,17 +127,27 @@ for sensr in sensorNames                                                # Go thr
 
     end       
     
-    
+
     global n = n + 1
 
-    if (n > 1)
-        global final_df = outerjoin(final_df, new_df, on = :dateTime, makeunique=true) 
-    else
-        final_df = new_df
+    if sensr_exsist
+
+        if (n > 1)
+            println("******************************************************")
+            global final_df = outerjoin(final_df, new_df, on = :dateTime, makeunique=true) 
+        else
+            final_df = new_df
+        end
+ 
     end
-    
+
 end
 
 
 final_df2 = sort!(final_df)  
-CSV.write("/home/prabu/"*nodeId*"df.csv", final_df2)
+CSV.write("/home/prabu/Research/mintsData/rawJld/"*nodeId*"_df.csv", final_df2)
+
+
+
+
+
