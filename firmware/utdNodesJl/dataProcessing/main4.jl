@@ -22,12 +22,13 @@ using Query
 using Statistics
 using JuMP
 using Missings
+#using Serialization
 
-
-yamlFile = YAML.load_file("../mintsDefinitionsV2.yaml"; dicttype=OrderedDict{String,Any})      # loading yaml file and arrange in order
+yamlFile = YAML.load_file("/mnt/861c9f85-a9ba-440b-8815-065043e41e1a/gitHubRepos/airNodesJuliaML/firmware/utdNodesJl/mintsDefinitionsV2.yaml"; dicttype=OrderedDict{String,Any})  
+#yamlFile = YAML.load_file("../mintsDefinitionsV2.yaml"; dicttype=OrderedDict{String,Any})      # loading yaml file and arrange in order
 dirctory = yamlFile["dataFolder"]                            # taking the directory of data stored
 sensorNames = yamlFile["liveStack"]                         # all the sensor names
-#sensorNames = ["PPD42NSDuo"]
+#sensorNames = ["TSL2591"]
 
 # only 11th node data is saved
 nodeIDs_array = yamlFile["nodeIDs"]                         # node's IDs array
@@ -68,112 +69,35 @@ function ss(dd, mm, yy, sensr)
             df = select!(df, Not(:trueCourse))
         end
 
-        df1 = df
-        df2 = df[1:2,:]
-
         try
-            #df1 = df
-            df1.dateTime =  SubString.(string.(df1.dateTime), 1, 19)
-            df1.dateTime = DateTime.(df1.dateTime,"yyyy-mm-dd HH:MM:SS")  
+            df.dateTime =  SubString.(string.(df.dateTime), 1, 19)
+            df.dateTime = DateTime.(df.dateTime,"yyyy-mm-dd HH:MM:SS")  
 
-            df1.dateTime = map((x) -> round(x, Dates.Second(30)), df1.dateTime)       # Rounding dateTime for 30 seconds 
-            gdf1 = groupby(df1, :dateTime)                                            # making groups by same dateTime
-            cgdf1 = combine(gdf1, valuecols(gdf1) .=> mean)                            # Calculate the mean of each group and then combine the groups 
+            df.dateTime = map((x) -> round(x, Dates.Second(30)), df.dateTime)       # Rounding dateTime for 30 seconds 
+            gdf = groupby(df, :dateTime)                                            # making groups by same dateTime
+            cgdf = combine(gdf, valuecols(gdf) .=> mean)                            # Calculate the mean of each group and then combine the groups 
         
-            colFullName = names(cgdf1)                                               # Take the column names of dataFrame into a array
+            colFullName = names(cgdf)                                               # Take the column names of dataFrame into a array
             for x in 2:length(colFullName)                                          # Starting from 2nd column and go through all the columns                                
                 num_let = length(colFullName[x])                                    # taking number of characters in one column name
                 colName = SubString.(string.(colFullName[x]), 1, num_let-5)         # removing last five characters of each column name (that is _mean)
-                rename!(cgdf1,colFullName[x] => sensr*"_"*colName)                   # adding sensor name to the column name
+                rename!(cgdf,colFullName[x] => sensr*"_"*colName)                   # adding sensor name to the column name
             end
         
-            return cgdf1                             # return the dataFrame to for loop
+            return cgdf                             # return the dataFrame to for loop
 
         catch e
             println("Error on "*CSV_file)
-            #df2 = df[1:10,:]
 
-            if sensr == "GPSGPGGA2"
-                clName = names(df2)
-                if "Column18" in clName
-                    df2 = select!(df2, Not(:Column18))
-                end
-                if "Column19" in clName
-                    df2 = select!(df2, Not(:Column19))
-                end
-                
-                try
-                    df2.latitudeCoordinate = parse.(Float64, df2.latitudeCoordinate)
-                    df2.longitudeCoordinate = parse.(Float64, df2.longitudeCoordinate)
-                    df2.numberOfSatellites = parse.(Float64, df2.numberOfSatellites)
-                catch e
-                end
-            end
-
-            if sensr == "GPSGPRMC2"
-                clName = names(df2)
-                if "Column15" in clName
-                    df2 = select!(df2, Not(:Column15))
-                end
-                if "Column16" in clName
-                    df2 = select!(df2, Not(:Column16))
-                end
-                if "Column17" in clName
-                    df2 = select!(df2, Not(:Column17))
-                end
-                if "Column18" in clName
-                    df2 = select!(df2, Not(:Column18))
-                end
-                if "Column19" in clName
-                    df2 = select!(df2, Not(:Column19))
-                end
-                if "Column20" in clName
-                    df2 = select!(df2, Not(:Column20))
-                end
-                if "Column21" in clName
-                    df2 = select!(df2, Not(:Column21))
-                end
-                
-                try
-                    #df2.latitudeCoordinate = parse.(Float64, df2.latitudeCoordinate)
-                    #df2.longitudeCoordinate = parse.(Float64, df2.longitudeCoordinate)
-                    df2.speedOverGround = parse.(Float64, df2.speedOverGround)
-                    df2.longitude = parse.(Float64, df2.longitude)
-                catch e
-                end
-            end
-
-            if sensr == "PPD42NSDuo"
-                clName = names(df2)
-                if "Column10" in clName
-                    df2 = select!(df2, Not(:Column10))
-                end
-                if "Column11" in clName
-                    df2 = select!(df2, Not(:Column11))
-                end
-                
-                try
-                    df2.LPOPmMid = parse.(Float64, df2.LPOPmMid)
-                catch e
-                end
-            end
-            
-            println(df2)
-            df2.dateTime =  SubString.(string.(df2.dateTime), 1, 19)
-            df2.dateTime = DateTime.(df2.dateTime,"yyyy-mm-dd HH:MM:SS") 
-
-            df2.dateTime = map((x) -> round(x, Dates.Second(30)), df2.dateTime)       # Rounding dateTime for 30 seconds 
-            gdf2 = groupby(df2, :dateTime)                                            # making groups by same dateTime
-            cgdf2 = combine(gdf2, valuecols(gdf2) .=> mean)                            # Calculate the mean of each group and then combine the groups 
-
-            colFullName = names(cgdf2)                                               # Take the column names of dataFrame into a array
+            colFullName = names(df)                                               # Take the column names of dataFrame into a array
             for x in 2:length(colFullName)                                          # Starting from 2nd column and go through all the columns                                
-                num_let = length(colFullName[x])                                    # taking number of characters in one column name
-                colName = SubString.(string.(colFullName[x]), 1, num_let-5)         # removing last five characters of each column name (that is _mean)
-                rename!(cgdf2,colFullName[x] => sensr*"_"*colName)                   # adding sensor name to the column name
+                #num_let = length(colFullName[x])                                    # taking number of characters in one column name
+                #colName = SubString.(string.(colFullName[x]), 1, num_let-5)         # removing last five characters of each column name (that is _mean)
+                rename!(df,colFullName[x] => sensr*"_"*colFullName[x])                   # adding sensor name to the column name
             end
 
-            return cgdf2
+            cgdf = empty(df::AbstractDataFrame)
+            return cgdf
         end
     end
 end
@@ -203,6 +127,8 @@ for sensr in sensorNames                                                # Go thr
                     df2 = averaged_df
                     k = k + 1
                     
+                    mapcols(col -> replace!(col, NaN=>0), df2)
+
                     println("done")
                     global sensr_exsist = true
                     
@@ -226,7 +152,6 @@ for sensr in sensorNames                                                # Go thr
             end
         end
     end       
-    
 
     global n = n + 1
 
@@ -243,7 +168,7 @@ for sensr in sensorNames                                                # Go thr
 
 end
 
-
 final_df2 = sort!(final_df)  
-CSV.write("/mnt/3fbf694d-d8e0-46c0-903d-69d994241206/mintsData/avJlData/"*nodeId*"_df.csv", final_df2)
+#CSV.write("/mnt/3fbf694d-d8e0-46c0-903d-69d994241206/mintsData/avJlData/"*nodeId*"_df.csv", final_df2)
+serialize("/mnt/3fbf694d-d8e0-46c0-903d-69d994241206/mintsData/avJlData/"*nodeId*"_df2.jls", final_df2)
 
