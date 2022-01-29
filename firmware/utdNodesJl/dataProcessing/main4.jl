@@ -1,4 +1,4 @@
-# import Pkg; 
+#import Pkg; 
 
 # Pkg.add("JLD")
 # Pkg.add("PlotlyJS")
@@ -10,6 +10,7 @@
 # Pkg.add("Query")
 # Pkg.add("OrderedCollections")
 # Pkg.add("Missings")
+#Pkg.add("JDF")
 
 import YAML
 
@@ -22,7 +23,10 @@ using Query
 using Statistics
 using JuMP
 using Missings
+# using JDF
 #using Serialization
+
+println("Started")
 
 yamlFile = YAML.load_file("/mnt/861c9f85-a9ba-440b-8815-065043e41e1a/gitHubRepos/airNodesJuliaML/firmware/utdNodesJl/mintsDefinitionsV2.yaml"; dicttype=OrderedDict{String,Any})  
 #yamlFile = YAML.load_file("../mintsDefinitionsV2.yaml"; dicttype=OrderedDict{String,Any})      # loading yaml file and arrange in order
@@ -46,8 +50,7 @@ function ss(dd, mm, yy, sensr)
     CSV_file = "MINTS_"*nodeId*"_"*sensr*"_"*yy*"_"*mm*"_"*dd*".csv"            # CSV file name
     if (CSV_file in CSV_fileName_arry)                                          # check CSV fime exist or not
         df = CSV.read(path*"/"*yy*"/"*mm*"/"*dd*"/"*CSV_file, DataFrame)        # If the CSV file exist then take the data into a dataframe
-        #df.dateTime =  SubString.(string.(df.dateTime), 1, 19)                  # Removing last three decimal numbers in dateTime column
-
+        
         if sensr == "GPSGPGGA2"
             df = select!(df, Not(:timestamp))
             df = select!(df, Not(:latitudeDirection))
@@ -90,9 +93,7 @@ function ss(dd, mm, yy, sensr)
             println("Error on "*CSV_file)
 
             colFullName = names(df)                                               # Take the column names of dataFrame into a array
-            for x in 2:length(colFullName)                                          # Starting from 2nd column and go through all the columns                                
-                #num_let = length(colFullName[x])                                    # taking number of characters in one column name
-                #colName = SubString.(string.(colFullName[x]), 1, num_let-5)         # removing last five characters of each column name (that is _mean)
+            for x in 2:length(colFullName)                                          # Starting from 2nd column and go through all the columns
                 rename!(df,colFullName[x] => sensr*"_"*colFullName[x])                   # adding sensor name to the column name
             end
 
@@ -121,33 +122,24 @@ for sensr in sensorNames                                                # Go thr
                 CSV_file = "MINTS_"*nodeId*"_"*sensr*"_"*y*"_"*m*"_"*d*".csv"
 
                 if (CSV_file in filess)
-                    println("Date: "*y*"_"*m*"_"*d)
-                    println(sensr)
                     averaged_df = ss(d, m, y, sensr)
                     df2 = averaged_df
                     k = k + 1
                     
                     mapcols(col -> replace!(col, NaN=>0), df2)
 
-                    println("done")
-                    global sensr_exsist = true
+                    println(y*"_"*m*"_"*d*"_"*sensr*" - done")
+                    global sensr_exist = true
                     
                     if (k > 1)
-
-                        #try
                         global new_df = outerjoin(new_df, df2, on = intersect(names(new_df), names(df2)))
-                        #catch e
-                            #println("Error of adding: "*"MINTS_"*nodeId*"_"*sensr*"_"*y*"_"*m*"_"*d*".csv")
-                        #end
-
                     else
                         new_df = averaged_df
                     end
 
                 else
                     println("No data of "*sensr)
-                    sensr_exsist = false
-                    #continue
+                    sensr_exist = false
                 end                
             end
         end
@@ -155,20 +147,24 @@ for sensr in sensorNames                                                # Go thr
 
     global n = n + 1
 
-    if sensr_exsist
-
+    if sensr_exist
         if (n > 1)
-            println("******************************************************")
             global final_df = outerjoin(final_df, new_df, on = :dateTime, makeunique=true) 
         else
             final_df = new_df
         end
- 
     end
-
 end
 
 final_df2 = sort!(final_df)  
+
+println("Anaylzing done")
+JDF.save("/mnt/3fbf694d-d8e0-46c0-903d-69d994241206/mintsData/avJlData/"*nodeId*"_df.jdf", final_df2)
+
+println("Data saved")
+
 #CSV.write("/mnt/3fbf694d-d8e0-46c0-903d-69d994241206/mintsData/avJlData/"*nodeId*"_df.csv", final_df2)
-serialize("/mnt/3fbf694d-d8e0-46c0-903d-69d994241206/mintsData/avJlData/"*nodeId*"_df2.jls", final_df2)
+#serialize("/mnt/3fbf694d-d8e0-46c0-903d-69d994241206/mintsData/avJlData/"*nodeId*"_df2.jls", final_df2)
+
+
 
